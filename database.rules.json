@@ -1,0 +1,52 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')",
+      ".indexOn": ["role", "email"],
+      "$uid": {
+        ".read": "auth.uid === $uid || (auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com'))",
+        ".write": "auth.uid === $uid || (auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com'))",
+        "role": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"
+        },
+        "status": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"
+        },
+        "verificationStatus": {
+           ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || !data.exists())"
+        }
+      }
+    },
+    "cars": {
+      ".read": true,
+      ".indexOn": ["listingType"],
+      "$carId": {
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || (root.child('users').child(auth.uid).child('role').val() === 'dealer' && data.child('dealerId').val() === auth.uid))"
+      },
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'dealer' || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"
+    },
+    "testDrives": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || (query.orderByChild == 'userId' && query.equalTo == auth.uid))",
+      ".indexOn": ["userId"],
+      "$driveId": {
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || root.child('cars').child(data.child('carId').val()).child('dealerId').val() === auth.uid)",
+        ".write": "auth != null && (data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || root.child('cars').child(data.child('carId').val()).child('dealerId').val() === auth.uid)"
+      },
+      ".write": "auth != null"
+    },
+    "purchases": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || (query.orderByChild == 'userId' && query.equalTo == auth.uid))",
+      ".indexOn": ["userId"],
+      "$purchaseId": {
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com' || root.child('cars').child(data.child('carId').val()).child('dealerId').val() === auth.uid)",
+        ".write": "auth != null && (!data.exists() || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"
+      }
+    },
+    "siteContent": {
+      "config": {
+        ".read": true,
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"
+      }
+    }
+  }
+}
