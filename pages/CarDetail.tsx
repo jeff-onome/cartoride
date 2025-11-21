@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCars } from '../hooks/useCars';
-import { FuelIcon, GaugeIcon, TransmissionIcon, ArrowLeftIcon, HeartIcon, ShieldCheckIcon, Spinner, ReceiptIcon } from '../components/IconComponents';
+import { FuelIcon, GaugeIcon, TransmissionIcon, ArrowLeftIcon, HeartIcon, ShieldCheckIcon, Spinner, ReceiptIcon, LockClosedIcon, CheckCircleIcon } from '../components/IconComponents';
 import { useUserData } from '../hooks/useUserData';
 import { useAuth } from '../hooks/useAuth';
+import { useSiteContent } from '../hooks/useSiteContent';
 import Modal from '../components/Modal';
 import { db } from '../firebase';
 import { sendEmail } from '../services/emailService';
+import Swal from 'sweetalert2';
 
 const CarDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +20,13 @@ const CarDetail: React.FC = () => {
   const [isVerifyConfirmModalOpen, setIsVerifyConfirmModalOpen] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  
+  // Payment States
+  const { siteContent } = useSiteContent();
+  const [paymentStep, setPaymentStep] = useState<'select' | 'details' | 'confirm'>('select');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvc: '', name: '' });
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addRecentlyViewed, scheduleTestDrive, addPurchase } = useUserData();
@@ -105,11 +114,21 @@ const CarDetail: React.FC = () => {
         const dealerBody = `Hello ${dealer.name},\n\nA new request has been made for your listing: ${car.year} ${car.make} ${car.model}.\n\nCustomer: ${user.fname} ${user.lname} (${user.email})\nType: ${isRent ? 'Rental' : 'Test Drive'}\n\nPlease check your dashboard for details.`;
         await sendEmail(dealer.email, dealerSubject, dealerBody);
 
-        alert(`${isRent ? 'Rental request' : 'Test drive'} scheduled successfully! Check your email for confirmation.`);
+        Swal.fire({
+            title: 'Request Sent!',
+            text: `${isRent ? 'Rental request' : 'Test drive'} scheduled successfully! Check your email for confirmation.`,
+            icon: 'success',
+            confirmButtonColor: '#2563EB'
+        });
 
     } catch (error) {
         console.error("Error scheduling:", error);
-        alert("Failed to schedule. Please try again.");
+        Swal.fire({
+            title: 'Error',
+            text: "Failed to schedule. Please try again.",
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     } finally {
         setProcessing(false);
     }
@@ -124,42 +143,74 @@ const CarDetail: React.FC = () => {
           setIsVerificationModalOpen(true);
           return;
       }
+      setPaymentStep('select');
       setIsPurchaseModalOpen(true);
+  };
+
+  const handlePaymentMethodSelect = (methodId: string) => {
+      setSelectedPaymentMethod(methodId);
+      setPaymentStep('details');
+  };
+
+  const handleCardInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setCardDetails({ ...cardDetails, [e.target.name]: e.target.value });
   };
 
   const confirmPurchase = async () => {
       if (!user || !car) return;
+      
+      // Basic card validation simulation
+      if (selectedPaymentMethod === 'card') {
+          if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvc || !cardDetails.name) {
+              Swal.fire({ title: 'Missing Details', text: 'Please fill in all card details.', icon: 'warning' });
+              return;
+          }
+      }
+
       setProcessing(true);
       
       try {
           // 1. Fetch Dealer Info
           const dealer = await fetchDealerInfo(car.dealerId);
+          const paymentLabel = siteContent?.paymentSettings.find(p => p.id === selectedPaymentMethod)?.label || selectedPaymentMethod;
 
           // 2. Create Purchase Record
           await addPurchase({
               carId: car.id,
               purchaseDate: new Date().toISOString(),
               pricePaid: car.price,
-              dealership: dealer.name
+              dealership: dealer.name,
+              paymentMethod: paymentLabel
           });
 
           // 3. Send Email to User
           const userSubject = "Purchase Confirmation - AutoSphere";
-          const userBody = `Dear ${user.fname},\n\nCongratulations on your purchase of the ${car.year} ${car.make} ${car.model}!\n\nPrice: ₦${car.price.toLocaleString()}\nTransaction ID: ${Date.now()}\n\nThe dealer (${dealer.name}) will contact you shortly to finalize the paperwork and delivery.\n\nThank you for choosing AutoSphere!`;
+          const userBody = `Dear ${user.fname},\n\nCongratulations on your purchase of the ${car.year} ${car.make} ${car.model}!\n\nPrice: ₦${car.price.toLocaleString()}\nPayment Method: ${paymentLabel}\nTransaction ID: ${Date.now()}\n\nThe dealer (${dealer.name}) will contact you shortly to finalize the paperwork and delivery.\n\nThank you for choosing AutoSphere!`;
           await sendEmail(user.email, userSubject, userBody);
 
           // 4. Send Email to Dealer
           const dealerSubject = "Vehicle Sold! - New Purchase Order";
-          const dealerBody = `Hello ${dealer.name},\n\nGreat news! Your listing ${car.year} ${car.make} ${car.model} has been sold.\n\nBuyer: ${user.fname} ${user.lname} (${user.email})\nPrice: ₦${car.price.toLocaleString()}\n\nPlease contact the buyer to arrange delivery.`;
+          const dealerBody = `Hello ${dealer.name},\n\nGreat news! Your listing ${car.year} ${car.make} ${car.model} has been sold.\n\nBuyer: ${user.fname} ${user.lname} (${user.email})\nPrice: ₦${car.price.toLocaleString()}\nPayment Method: ${paymentLabel}\n\nPlease contact the buyer to arrange delivery.`;
           await sendEmail(dealer.email, dealerSubject, dealerBody);
 
           setIsPurchaseModalOpen(false);
-          alert("Purchase successful! A confirmation email has been sent to you.");
-          navigate('/profile'); // Redirect to profile/purchases
+          Swal.fire({
+              title: 'Purchase Successful!',
+              text: "A confirmation email has been sent to you.",
+              icon: 'success',
+              confirmButtonColor: '#2563EB'
+          }).then(() => {
+               navigate('/profile'); // Redirect to profile/purchases
+          });
 
       } catch (error) {
           console.error("Purchase failed:", error);
-          alert("An error occurred during the purchase. Please contact support.");
+          Swal.fire({
+              title: 'Purchase Failed',
+              text: "An error occurred during the purchase. Please contact support.",
+              icon: 'error',
+              confirmButtonColor: '#2563EB'
+          });
       } finally {
           setProcessing(false);
       }
@@ -185,6 +236,7 @@ const CarDetail: React.FC = () => {
     );
   }
   
+  const availablePaymentMethods = siteContent?.paymentSettings.filter(m => m.enabled) || [];
 
   return (
     <>
@@ -348,37 +400,103 @@ const CarDetail: React.FC = () => {
       <Modal
         isOpen={isPurchaseModalOpen}
         onClose={() => setIsPurchaseModalOpen(false)}
-        title="Confirm Purchase"
+        title={paymentStep === 'select' ? "Select Payment Method" : "Payment Details"}
       >
-        <div className="text-center">
-            <div className="bg-accent/10 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                <ReceiptIcon className="w-10 h-10 text-accent" />
-            </div>
-            <h3 className="text-2xl font-bold text-foreground mb-2">{car.make} {car.model}</h3>
-            <p className="text-3xl font-bold text-primary mb-6">₦{car.price.toLocaleString()}</p>
-            
-            <p className="text-muted-foreground mb-6 text-sm">
-                By clicking confirm, you are initiating a binding agreement to purchase this vehicle. 
-                The dealer will be notified immediately, and a confirmation email will be sent to your registered address <strong>({user?.email})</strong>.
-            </p>
+        <div>
+            {paymentStep === 'select' && (
+                <div className="space-y-4">
+                    <p className="text-muted-foreground mb-4">Please choose how you would like to pay for this vehicle.</p>
+                    <div className="grid gap-3">
+                        {availablePaymentMethods.map(method => (
+                            <button
+                                key={method.id}
+                                onClick={() => handlePaymentMethodSelect(method.id)}
+                                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary transition-colors text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {method.id === 'card' ? <ReceiptIcon className="w-5 h-5 text-accent"/> : <CheckCircleIcon className="w-5 h-5 text-muted-foreground"/>}
+                                    <span className="font-semibold text-foreground">{method.label}</span>
+                                </div>
+                                <ArrowLeftIcon className="w-4 h-4 rotate-180 text-muted-foreground" />
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-border">
+                         <div className="flex justify-between items-center">
+                             <span className="font-semibold text-foreground">Total Amount</span>
+                             <span className="text-xl font-bold text-primary">₦{car.price.toLocaleString()}</span>
+                         </div>
+                    </div>
+                </div>
+            )}
 
-            <div className="flex gap-4">
-                <button 
-                    onClick={() => setIsPurchaseModalOpen(false)} 
-                    disabled={processing}
-                    className="flex-1 bg-secondary text-foreground font-bold py-3 rounded-lg hover:bg-border transition-colors"
-                >
-                    Cancel
-                </button>
-                <button 
-                    onClick={confirmPurchase} 
-                    disabled={processing}
-                    className="flex-1 bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                >
-                    {processing && <Spinner className="w-5 h-5" />}
-                    {processing ? 'Processing...' : 'Confirm Purchase'}
-                </button>
-            </div>
+            {paymentStep === 'details' && (
+                <div className="space-y-6">
+                    <button 
+                        onClick={() => setPaymentStep('select')} 
+                        className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-2"
+                    >
+                        <ArrowLeftIcon className="w-3 h-3" /> Back to methods
+                    </button>
+
+                    <div className="bg-secondary p-4 rounded-lg border border-border mb-4">
+                         <p className="text-sm font-semibold text-foreground mb-1">Payment Method: {availablePaymentMethods.find(m => m.id === selectedPaymentMethod)?.label}</p>
+                         <p className="text-2xl font-bold text-primary">₦{car.price.toLocaleString()}</p>
+                    </div>
+
+                    {selectedPaymentMethod === 'card' ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-500/10 p-2 rounded text-blue-600">
+                                <LockClosedIcon className="w-4 h-4" />
+                                Secure Encrypted Connection
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Card Number</label>
+                                <input type="text" name="number" placeholder="0000 0000 0000 0000" value={cardDetails.number} onChange={handleCardInput} className="w-full bg-background border border-input rounded-md p-2" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Expiry Date</label>
+                                    <input type="text" name="expiry" placeholder="MM/YY" value={cardDetails.expiry} onChange={handleCardInput} className="w-full bg-background border border-input rounded-md p-2" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">CVC</label>
+                                    <input type="text" name="cvc" placeholder="123" value={cardDetails.cvc} onChange={handleCardInput} className="w-full bg-background border border-input rounded-md p-2" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Cardholder Name</label>
+                                <input type="text" name="name" placeholder="John Doe" value={cardDetails.name} onChange={handleCardInput} className="w-full bg-background border border-input rounded-md p-2" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-accent/10 p-6 rounded-lg border border-accent/20">
+                             <h4 className="font-bold text-lg text-accent mb-2">Instructions</h4>
+                             <p className="text-foreground whitespace-pre-wrap">
+                                {availablePaymentMethods.find(m => m.id === selectedPaymentMethod)?.instructions || 'No specific instructions provided.'}
+                             </p>
+                        </div>
+                    )}
+
+                    <div className="flex gap-4 mt-6">
+                        <button 
+                            onClick={() => setIsPurchaseModalOpen(false)} 
+                            className="flex-1 bg-secondary text-foreground font-bold py-3 rounded-lg hover:bg-border transition-colors"
+                            disabled={processing}
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmPurchase} 
+                            disabled={processing}
+                            className="flex-1 bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                        >
+                            {processing && <Spinner className="w-5 h-5" />}
+                            {processing ? 'Processing...' : `Pay ₦${car.price.toLocaleString()}`}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
       </Modal>
     </>

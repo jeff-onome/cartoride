@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../../types';
 import { COUNTRIES_WITH_STATES } from '../../data/locationData';
+import Swal from 'sweetalert2';
 
 export type UserFormData = Omit<User, 'uid' | 'address' | 'verificationStatus' | 'kycDocument'> & { uid?: string, password?: string };
 
@@ -51,7 +53,12 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, isEdit = fal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if(!isEdit && (!formData.password || formData.password.length < 6)){
-        alert("Password must be at least 6 characters long.");
+        Swal.fire({
+            title: 'Weak Password',
+            text: "Password must be at least 6 characters long.",
+            icon: 'warning',
+            confirmButtonColor: '#2563EB'
+        });
         return;
     }
     onSubmit(formData);

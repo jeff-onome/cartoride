@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserForm, { UserFormData } from './UserForm';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import { User } from '../../types';
+import Swal from 'sweetalert2';
 
 const AddUser: React.FC = () => {
   const navigate = useNavigate();
@@ -10,7 +12,12 @@ const AddUser: React.FC = () => {
 
   const handleAddUser = async (userData: UserFormData) => {
      if (users.some(u => u.email === userData.email)) {
-        alert("A user with this email already exists.");
+        Swal.fire({
+            title: 'User Exists',
+            text: "A user with this email already exists.",
+            icon: 'warning',
+            confirmButtonColor: '#2563EB'
+        });
         return;
     }
     const { password, ...restOfUserData } = userData;
@@ -26,10 +33,24 @@ const AddUser: React.FC = () => {
 
     try {
       await addUser(userToCreate, password || '');
-      navigate('/superadmin/users');
+      Swal.fire({
+          title: 'Success!',
+          text: 'User created successfully.',
+          icon: 'success',
+          confirmButtonColor: '#2563EB',
+          timer: 2000,
+          showConfirmButton: false
+      }).then(() => {
+          navigate('/superadmin/users');
+      });
     } catch(error) {
        console.error("Failed to add user:", error);
-       alert("An error occurred. Check if the user already exists in Firebase Auth.");
+       Swal.fire({
+            title: 'Error',
+            text: "An error occurred. Check if the user already exists in Firebase Auth.",
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     }
   };
 

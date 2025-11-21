@@ -14,6 +14,7 @@ import {
 } from '../components/IconComponents';
 import { COUNTRIES_WITH_STATES } from '../data/locationData';
 import { supabase } from '../supabase';
+import Swal from 'sweetalert2';
 
 
 type Tab = 'garage' | 'compare' | 'drives' | 'purchases' | 'verification' | 'settings';
@@ -111,9 +112,14 @@ const PurchaseItem: React.FC<{ purchase: Purchase, car?: Car }> = ({ purchase, c
         <img src={car?.images[0]} alt={car?.make} className="w-full sm:w-32 h-24 object-cover rounded-md" />
         <div className="flex-grow">
             <h3 className="font-bold text-foreground">{car?.make} {car?.model}</h3>
-            <p className="text-sm text-muted-foreground">Purchased on: {new Date(purchase.purchaseDate).toLocaleDateString()}</p>
-            <p className="text-lg font-semibold text-accent mt-2">₦{purchase.pricePaid.toLocaleString()}</p>
-             <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+            <div className="flex justify-between items-start">
+                <div>
+                     <p className="text-sm text-muted-foreground">Purchased on: {new Date(purchase.purchaseDate).toLocaleDateString()}</p>
+                     <p className="text-sm text-muted-foreground mt-1">Method: <span className="font-medium text-foreground">{purchase.paymentMethod || 'Standard'}</span></p>
+                </div>
+                <p className="text-lg font-semibold text-accent">₦{purchase.pricePaid.toLocaleString()}</p>
+            </div>
+             <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
                 <MapPinIcon className="w-4 h-4" />
                 <span>Dealership: {purchase.dealership}</span>
             </div>
@@ -213,7 +219,12 @@ const KycUploadForm: React.FC<{user: User, onUpdateKyc: () => void}> = ({ user, 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!frontImage) {
-            alert("Please select the required document image.");
+            Swal.fire({
+                title: 'Image Required',
+                text: "Please select the required document image.",
+                icon: 'warning',
+                confirmButtonColor: '#2563EB'
+            });
             return;
         }
 
@@ -230,11 +241,21 @@ const KycUploadForm: React.FC<{user: User, onUpdateKyc: () => void}> = ({ user, 
 
             await updateUserContext({ kycDocument: kycData, verificationStatus: 'Pending' });
             onUpdateKyc();
-            alert("Documents submitted successfully for verification.");
+            Swal.fire({
+                title: 'Success!',
+                text: "Documents submitted successfully for verification.",
+                icon: 'success',
+                confirmButtonColor: '#2563EB'
+            });
 
         } catch (error: any) {
             console.error("KYC upload failed:", error);
-            alert(`An error occurred during upload: ${error.message || 'Unknown error'}`);
+            Swal.fire({
+                title: 'Upload Failed',
+                text: `An error occurred during upload: ${error.message || 'Unknown error'}`,
+                icon: 'error',
+                confirmButtonColor: '#2563EB'
+            });
         } finally {
             setIsUploading(false);
         }
@@ -310,7 +331,12 @@ const PersonalInformationForm: React.FC<{user: User, onUpdate: () => void}> = ({
         e.preventDefault();
         updateUserContext(formData);
         onUpdate();
-        alert("Personal information updated.");
+        Swal.fire({
+            title: 'Updated',
+            text: "Personal information updated.",
+            icon: 'success',
+            confirmButtonColor: '#2563EB'
+        });
     };
 
     return (
@@ -351,7 +377,12 @@ const AddressForm: React.FC<{user: User, onUpdate: () => void}> = ({ user, onUpd
         const { country, state, ...address } = formData;
         updateUserContext({ address, country, state });
         onUpdate();
-        alert("Address information updated.");
+        Swal.fire({
+            title: 'Updated',
+            text: "Address information updated.",
+            icon: 'success',
+            confirmButtonColor: '#2563EB'
+        });
     };
 
     return (

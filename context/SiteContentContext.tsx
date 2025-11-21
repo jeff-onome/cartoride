@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { db } from '../firebase';
-import { SiteContent, FaqItem, Testimonial } from '../types';
+import { SiteContent, FaqItem, Testimonial, PaymentMethod } from '../types';
 
 interface SiteContentContextType {
   siteContent: SiteContent | null;
@@ -21,6 +21,12 @@ const FAQ_DATA: FaqItem[] = [
 const TESTIMONIALS: Testimonial[] = [
     { quote: "The team at AutoSphere made my car buying experience incredibly smooth.", author: "Tunde Adebayo", location: "Lagos, Nigeria", avatar: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=100&q=80", rating: 5 },
     { quote: "I was impressed with the quality of their inventory and the professionalism of the staff.", author: "Fatima Aliyu", location: "Abuja, Nigeria", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80", rating: 5 },
+];
+
+const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
+    { id: 'card', label: 'Credit/Debit Card', enabled: true, instructions: 'Secure payment via Stripe/Paystack.' },
+    { id: 'pod', label: 'Pay on Delivery', enabled: true, instructions: 'Pay via cash or transfer upon vehicle delivery.' },
+    { id: 'bank_transfer', label: 'Bank Transfer', enabled: true, instructions: 'Transfer to: AutoSphere Ltd, Bank: Zenith Bank, Account: 1234567890' },
 ];
 
 const INITIAL_SITE_CONTENT: SiteContent = {
@@ -47,6 +53,7 @@ const INITIAL_SITE_CONTENT: SiteContent = {
         sortOptions: ['price-asc', 'price-desc', 'year-desc', 'mileage-asc'],
         conditionFilters: ['New', 'Used'],
     },
+    paymentSettings: INITIAL_PAYMENT_METHODS,
     faq: FAQ_DATA,
     testimonials: TESTIMONIALS,
     themeSettings: {
@@ -65,10 +72,13 @@ export const SiteContentProvider: React.FC<{ children: ReactNode }> = ({ childre
         const unsubscribe = contentRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // Ensure themeSettings exists even if fetching old data structure
+                // Ensure new fields exist when fetching old data
                 const content = data as SiteContent;
                 if (!content.themeSettings) {
                     content.themeSettings = INITIAL_SITE_CONTENT.themeSettings;
+                }
+                if (!content.paymentSettings) {
+                    content.paymentSettings = INITIAL_SITE_CONTENT.paymentSettings;
                 }
                 setSiteContent(content);
             } else {

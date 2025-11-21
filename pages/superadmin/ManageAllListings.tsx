@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useCars } from '../../hooks/useCars';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import { TrashIcon, SearchIcon } from '../../components/IconComponents';
+import Swal from 'sweetalert2';
 
 const ManageAllListings: React.FC = () => {
   const { cars, deleteCar } = useCars();
@@ -24,9 +25,24 @@ const ManageAllListings: React.FC = () => {
     ), [cars, searchTerm, dealerEmailMap]);
 
   const handleDelete = (carId: string, carName: string) => {
-    if (window.confirm(`Are you sure you want to delete the listing for ${carName}? This action cannot be undone.`)) {
-      deleteCar(carId);
-    }
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Are you sure you want to delete the listing for ${carName}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            deleteCar(carId);
+            Swal.fire(
+                'Deleted!',
+                'The listing has been deleted.',
+                'success'
+            );
+        }
+    });
   };
 
   return (

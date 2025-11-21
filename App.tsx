@@ -50,7 +50,7 @@ const AppLayout: React.FC = () => {
   useEffect(() => {
     if (siteContent?.themeSettings) {
         const root = document.documentElement;
-        const { primaryColor, secondaryColor, accentColor } = siteContent.themeSettings;
+        const { primaryColor, secondaryColor, accentColor, backgroundColor } = siteContent.themeSettings;
 
         // Primary
         root.style.setProperty('--primary', hexToHSL(primaryColor));
@@ -71,6 +71,15 @@ const AppLayout: React.FC = () => {
         if (secondaryColor) {
              root.style.setProperty('--secondary', hexToHSL(secondaryColor));
              root.style.setProperty('--secondary-foreground', getContrastColorHSL(secondaryColor));
+        }
+
+        // Background
+        if (backgroundColor) {
+             root.style.setProperty('--background', hexToHSL(backgroundColor));
+             root.style.setProperty('--foreground', getContrastColorHSL(backgroundColor));
+        } else {
+             root.style.removeProperty('--background');
+             root.style.removeProperty('--foreground');
         }
     }
   }, [siteContent]);

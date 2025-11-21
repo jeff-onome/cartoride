@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Car } from '../types';
 import { supabase } from '../supabase';
 import { XCircleIcon, UploadIcon, Spinner } from './IconComponents';
+import Swal from 'sweetalert2';
 
 interface CarFormProps {
   initialData?: Car;
@@ -102,7 +103,12 @@ const CarForm: React.FC<CarFormProps> = ({ initialData, onSubmit, isEdit, childr
         }));
     } catch (error) {
         console.error('Error uploading images:', error);
-        alert('Failed to upload images.');
+        Swal.fire({
+            title: 'Upload Failed',
+            text: 'Failed to upload images.',
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     } finally {
         setUploading(false);
     }

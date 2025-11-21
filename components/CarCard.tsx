@@ -5,6 +5,7 @@ import type { Car } from '../types';
 import { FuelIcon, GaugeIcon, TransmissionIcon, HeartIcon, CompareIcon } from './IconComponents';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
+import Swal from 'sweetalert2';
 
 interface CarCardProps {
   car: Car;
@@ -26,25 +27,23 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
-        alert("Please log in to use this feature.");
+        Swal.fire({
+            title: 'Login Required',
+            text: "Please log in to use this feature.",
+            icon: 'info',
+            confirmButtonColor: '#2563EB'
+        });
         return;
     }
 
     const userFieldRef = db.ref(`users/${user.uid}/${field}`);
     
     await userFieldRef.transaction((currentData: string[] | null) => {
-        if (currentData === null) {
-            if (field === 'compareItems' && !currentStatus && 0 >= 4) {
-                return; // Abort transaction
-            }
-            return currentStatus ? [] : [car.id];
-        }
-
         const currentList = Array.isArray(currentData) ? currentData : [];
 
         if (field === 'compareItems' && !currentStatus && currentList.length >= 4) {
-            alert("You can only compare up to 4 cars at a time.");
-            return; // To abort the transaction, we return undefined.
+             // We can't easily show alert from inside transaction callback, but we can abort
+            return; // Return undefined to abort transaction
         }
 
         if (currentStatus) {
@@ -56,12 +55,22 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
             return currentList;
         }
     });
+    
+    // Check limit after transaction for UI feedback if needed
+    if (field === 'compareItems' && !currentStatus && user.compareItems && user.compareItems.length >= 4) {
+         Swal.fire({
+            title: 'Limit Reached',
+            text: "You can only compare up to 4 cars at a time.",
+            icon: 'warning',
+            confirmButtonColor: '#2563EB'
+        });
+    }
   };
 
   const isRent = car.listingType === 'Rent';
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-lg hover:shadow-primary/20 transition-shadow duration-300 flex flex-col group">
+    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-lg hover:shadow-xl hover:-translate-y-1 hover:shadow-primary/20 transition-all duration-300 flex flex-col group">
       <div className="relative overflow-hidden">
         <Link to={`/car/${car.id}`}>
             <img 

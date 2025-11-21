@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import CarForm from '../../components/CarForm';
 import { useCars } from '../../hooks/useCars';
 import { useAuth } from '../../hooks/useAuth';
 import type { Car } from '../../types';
+import Swal from 'sweetalert2';
 
 const AddCar: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +14,12 @@ const AddCar: React.FC = () => {
 
   const handleAddCar = async (carData: Omit<Car, 'id' | 'dealerId' | 'verificationStatus'>) => {
     if (!user) {
-        alert("You must be logged in to add a car.");
+        Swal.fire({
+            title: 'Login Required',
+            text: "You must be logged in to add a car.",
+            icon: 'warning',
+            confirmButtonColor: '#2563EB'
+        });
         return;
     }
     try {
@@ -24,7 +31,12 @@ const AddCar: React.FC = () => {
         navigate('/dealer/listings');
     } catch (error) {
         console.error("Failed to add car:", error);
-        alert("An error occurred while adding the vehicle. Please try again.");
+        Swal.fire({
+            title: 'Error',
+            text: "An error occurred while adding the vehicle. Please try again.",
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     }
   };
 

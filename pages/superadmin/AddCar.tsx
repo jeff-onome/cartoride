@@ -1,9 +1,11 @@
+
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CarForm from '../../components/CarForm';
 import { useCars } from '../../hooks/useCars';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import type { Car } from '../../types';
+import Swal from 'sweetalert2';
 
 const SuperAdminAddCar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +17,12 @@ const SuperAdminAddCar: React.FC = () => {
 
   const handleAddCar = async (carData: Omit<Car, 'id' | 'dealerId' | 'verificationStatus'>) => {
     if (!selectedDealerId) {
-        alert("Please select a dealer to assign this vehicle to.");
+        Swal.fire({
+            title: 'Selection Required',
+            text: "Please select a dealer to assign this vehicle to.",
+            icon: 'warning',
+            confirmButtonColor: '#2563EB'
+        });
         return;
     }
     try {
@@ -24,11 +31,22 @@ const SuperAdminAddCar: React.FC = () => {
             dealerId: selectedDealerId,
             verificationStatus: 'Verified' // Cars added by admin are pre-verified
         });
-        alert("Vehicle added successfully!");
-        navigate('/superadmin/listings');
+        Swal.fire({
+            title: 'Success!',
+            text: "Vehicle added successfully!",
+            icon: 'success',
+            confirmButtonColor: '#2563EB'
+        }).then(() => {
+             navigate('/superadmin/listings');
+        });
     } catch(e) {
         console.error("Failed to add car:", e);
-        alert("An error occurred while adding the vehicle.");
+        Swal.fire({
+            title: 'Error',
+            text: "An error occurred while adding the vehicle.",
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     }
   };
 

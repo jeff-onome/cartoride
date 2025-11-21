@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserData } from '../../hooks/useUserData';
@@ -58,6 +59,7 @@ const SalesHistory: React.FC = () => {
                 <th className="p-4 font-semibold">Vehicle</th>
                 <th className="p-4 font-semibold">Purchase Date</th>
                 <th className="p-4 font-semibold">Price Paid</th>
+                <th className="p-4 font-semibold">Payment Method</th>
                 <th className="p-4 font-semibold">Dealership Location</th>
               </tr>
             </thead>
@@ -78,13 +80,14 @@ const SalesHistory: React.FC = () => {
                       </td>
                       <td className="p-4 text-muted-foreground">{new Date(sale.purchaseDate).toLocaleDateString()}</td>
                       <td className="p-4 font-semibold text-foreground">₦{sale.pricePaid.toLocaleString()}</td>
+                      <td className="p-4 text-muted-foreground">{sale.paymentMethod || 'N/A'}</td>
                       <td className="p-4 text-muted-foreground">{sale.dealership}</td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="text-center p-8 text-muted-foreground">
+                  <td colSpan={5} className="text-center p-8 text-muted-foreground">
                     {searchTerm ? `No sales found for "${searchTerm}".` : "You have no recorded sales yet."}
                   </td>
                 </tr>

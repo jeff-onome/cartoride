@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSiteContent } from '../../hooks/useSiteContent';
 import { useCars } from '../../hooks/useCars';
-import type { SiteContent } from '../../types';
-import { UploadIcon, Spinner } from '../../components/IconComponents';
+import type { SiteContent, PaymentMethod } from '../../types';
+import { UploadIcon, Spinner, ReceiptIcon } from '../../components/IconComponents';
 import { supabase } from '../../supabase';
+import Swal from 'sweetalert2';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="mb-12 last:mb-0">
@@ -40,7 +41,12 @@ const SiteContent: React.FC = () => {
                     primaryColor: '#2563EB',
                     secondaryColor: '#F3F4F6',
                     accentColor: '#2563EB',
-                }
+                },
+                paymentSettings: siteContent.paymentSettings || [
+                    { id: 'card', label: 'Credit/Debit Card', enabled: true },
+                    { id: 'pod', label: 'Pay on Delivery', enabled: true },
+                    { id: 'bank_transfer', label: 'Bank Transfer', enabled: true }
+                ]
             }));
         }
     }, [siteContent]);
@@ -61,6 +67,19 @@ const SiteContent: React.FC = () => {
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
+    };
+    
+    const handleResetBackgroundColor = () => {
+       setFormData(prev => {
+           if (!prev.themeSettings) return prev;
+           return {
+               ...prev,
+               themeSettings: {
+                   ...prev.themeSettings,
+                   backgroundColor: null // Use null to delete property in Firebase
+               }
+           };
+       });
     };
     
     const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -99,7 +118,12 @@ const SiteContent: React.FC = () => {
                 setFormData(prev => ({...prev, hero: {...prev.hero, image: data.publicUrl }}));
             } catch (error: any) {
                 console.error("Image upload failed", error);
-                alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
+                Swal.fire({
+                    title: 'Upload Failed',
+                    text: `Failed to upload image: ${error.message || 'Unknown error'}`,
+                    icon: 'error',
+                    confirmButtonColor: '#2563EB'
+                });
             } finally {
                 setIsUploadingHero(false);
             }
@@ -126,15 +150,33 @@ const SiteContent: React.FC = () => {
         });
     };
 
+    const handlePaymentMethodChange = (index: number, field: keyof PaymentMethod, value: any) => {
+        setFormData(prev => {
+            const newMethods = [...prev.paymentSettings];
+            newMethods[index] = { ...newMethods[index], [field]: value };
+            return { ...prev, paymentSettings: newMethods };
+        });
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
         try {
             await updateSiteContent(formData);
-            alert(`Content saved successfully!`);
+            Swal.fire({
+                title: 'Success!',
+                text: 'Content saved successfully!',
+                icon: 'success',
+                confirmButtonColor: '#2563EB'
+            });
         } catch (error) {
             console.error("Failed to save site content:", error);
-            alert("Failed to save changes. Please try again.");
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to save changes. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#2563EB'
+            });
         } finally {
             setIsSaving(false);
         }
@@ -149,7 +191,7 @@ const SiteContent: React.FC = () => {
 
             <form onSubmit={handleSave}>
                 <Section title="Theme & Branding">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div>
                             <label className="block text-sm font-medium mb-2">Primary Color</label>
                             <div className="flex items-center gap-2">
@@ -192,6 +234,64 @@ const SiteContent: React.FC = () => {
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">Used for card backgrounds and subtle UI elements.</p>
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Background Color</label>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="color" 
+                                    name="themeSettings.backgroundColor" 
+                                    value={formData.themeSettings?.backgroundColor || '#FFFFFF'} 
+                                    onChange={handleInputChange} 
+                                    className="h-10 w-16 p-1 bg-background border border-input rounded cursor-pointer"
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={handleResetBackgroundColor}
+                                    className="text-xs bg-secondary hover:bg-border border border-input px-2 py-1 rounded"
+                                    title="Reset to default"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">Overrides the main background.</p>
+                        </div>
+                    </div>
+                </Section>
+
+                <Section title="Payment Settings">
+                    <div className="space-y-6">
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Enable or disable payment methods available during checkout. Customize instructions for manual payment types.
+                        </p>
+                        {formData.paymentSettings?.map((method, index) => (
+                            <div key={method.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center border-b border-border pb-4 last:border-0">
+                                <div className="flex items-center h-full pt-2 sm:pt-0">
+                                    <input
+                                        type="checkbox"
+                                        id={`payment-${method.id}`}
+                                        checked={method.enabled}
+                                        onChange={(e) => handlePaymentMethodChange(index, 'enabled', e.target.checked)}
+                                        className="h-5 w-5 rounded border-border text-accent focus:ring-ring"
+                                    />
+                                </div>
+                                <div className="flex-grow w-full sm:w-auto">
+                                    <div className="flex items-center gap-2 mb-1">
+                                         <label htmlFor={`payment-${method.id}`} className="font-bold text-foreground cursor-pointer">
+                                            {method.label}
+                                        </label>
+                                        {method.id === 'card' && <ReceiptIcon className="w-4 h-4 text-muted-foreground"/>}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={method.instructions || ''}
+                                        onChange={(e) => handlePaymentMethodChange(index, 'instructions', e.target.value)}
+                                        placeholder="Enter payment instructions (e.g. Bank Account details)"
+                                        className={`${inputClass} text-sm`}
+                                        disabled={!method.enabled}
+                                    />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </Section>
 

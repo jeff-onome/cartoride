@@ -78,12 +78,21 @@ export interface Purchase {
   purchaseDate: string; // ISO string
   pricePaid: number;
   dealership: string;
+  paymentMethod: string; // e.g., "Card", "Pay on Delivery"
 }
 
 export interface ThemeSettings {
   primaryColor: string; // Hex code
   secondaryColor: string; // Hex code
   accentColor: string; // Hex code
+  backgroundColor?: string | null; // Hex code
+}
+
+export interface PaymentMethod {
+    id: string;
+    label: string; // e.g., "Credit/Debit Card", "Pay on Delivery"
+    enabled: boolean;
+    instructions?: string; // e.g., Bank details or "Pay when car arrives"
 }
 
 export interface SiteContent {
@@ -118,6 +127,7 @@ export interface SiteContent {
     sortOptions: string[];
     conditionFilters: string[];
   };
+  paymentSettings: PaymentMethod[];
   faq: FaqItem[];
   testimonials: Testimonial[];
   themeSettings?: ThemeSettings;

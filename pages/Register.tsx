@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { COUNTRIES_WITH_STATES } from '../data/locationData';
 import { ArrowLeftIcon } from '../components/IconComponents';
 import type { User } from '../types';
+import Swal from 'sweetalert2';
 
 const Register: React.FC = () => {
   const [fname, setFname] = useState('');
@@ -69,13 +71,26 @@ const Register: React.FC = () => {
         };
 
         await register(userToRegister, password);
-        navigate('/');
+        Swal.fire({
+            icon: 'success',
+            title: 'Registration Successful!',
+            text: 'Your account has been created. Welcome to AutoSphere!',
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            navigate('/');
+        });
 
     } catch (err: any) {
         if (err.code === 'auth/email-already-in-use') {
             setError('An account with this email already exists.');
         } else {
-            setError('An error occurred during registration. Please try again.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Registration Failed',
+                text: err.message || 'An error occurred during registration. Please try again.',
+                confirmButtonColor: '#2563EB'
+            });
         }
     } finally {
         setLoading(false);

@@ -1,19 +1,19 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from '../components/IconComponents';
+import Swal from 'sweetalert2';
 
 const ChangePassword = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (newPassword.length < 6) {
       setError('New password must be at least 6 characters long.');
@@ -28,11 +28,19 @@ const ChangePassword = () => {
     // Mock API call
     console.log('Changing password...');
     setTimeout(() => {
-        setSuccess('Password updated successfully!');
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: 'Password updated successfully!',
+            confirmButtonColor: '#2563EB',
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            navigate('/profile');
+        });
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setTimeout(() => navigate('/profile'), 2000);
     }, 1000);
   };
 
@@ -109,7 +117,6 @@ const ChangePassword = () => {
           </div>
 
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          {success && <p className="text-green-500 text-sm text-center">{success}</p>}
 
           <div>
             <button

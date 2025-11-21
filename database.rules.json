@@ -4,7 +4,7 @@
       ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')",
       ".indexOn": ["role", "email"],
       "$uid": {
-        ".read": "auth.uid === $uid || (auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com'))",
+        ".read": "auth.uid === $uid || (auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')) || (auth != null && (data.child('role').val() === 'dealer' || data.child('role').val() === 'superadmin'))",
         ".write": "auth.uid === $uid || (auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com'))",
         "role": {
           ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'superadmin' || auth.token.email === 'superadmin@autosphere.com')"

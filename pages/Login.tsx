@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ArrowLeftIcon, InformationCircleIcon } from '../components/IconComponents';
 import { db } from '../firebase';
+import Swal from 'sweetalert2';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +21,12 @@ const Login: React.FC = () => {
     // Redirect if user is authenticated and profile is loaded
     if (user && !authLoading) {
         if (user.status === 'Blocked') {
-            setError('Your account has been blocked. Please contact support.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Account Blocked',
+                text: 'Your account has been blocked. Please contact support.',
+                confirmButtonColor: '#EF4444'
+            });
             setIsLoggingIn(false);
             return;
         }
@@ -62,10 +68,20 @@ const Login: React.FC = () => {
                 setError('Invalid email or password.');
                 break;
             case 'auth/too-many-requests':
-                 setError('Too many failed login attempts. Please try again later.');
+                 Swal.fire({
+                    icon: 'error',
+                    title: 'Too Many Attempts',
+                    text: 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.',
+                    confirmButtonColor: '#2563EB'
+                 });
                  break;
             default:
-                setError('An error occurred during login. Please try again.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Login Error',
+                    text: 'An unexpected error occurred during login. Please try again.',
+                    confirmButtonColor: '#2563EB'
+                });
                 console.error("Login error:", err);
                 break;
         }

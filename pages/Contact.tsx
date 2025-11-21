@@ -1,10 +1,17 @@
+
 import React from 'react';
 import { useSiteContent } from '../hooks/useSiteContent';
+import Swal from 'sweetalert2';
 
 const ContactForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Thank you for your message! We will get back to you shortly.');
+    Swal.fire({
+        title: 'Message Sent!',
+        text: 'Thank you for your message! We will get back to you shortly.',
+        icon: 'success',
+        confirmButtonColor: '#2563EB'
+    });
     // In a real app, you would handle form submission here (e.g., save to Firestore).
     (e.target as HTMLFormElement).reset();
   };

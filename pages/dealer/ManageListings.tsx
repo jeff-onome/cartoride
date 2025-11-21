@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useCars } from '../../hooks/useCars';
 import { PencilIcon, TrashIcon, PlusCircleIcon, SearchIcon } from '../../components/IconComponents';
+import Swal from 'sweetalert2';
 
 const ManageListings: React.FC = () => {
   const { user } = useAuth();
@@ -19,9 +20,24 @@ const ManageListings: React.FC = () => {
     ), [dealerCars, searchTerm]);
 
   const handleDelete = (carId: string, carName: string) => {
-    if (window.confirm(`Are you sure you want to delete the listing for ${carName}?`)) {
-      deleteCar(carId);
-    }
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Are you sure you want to delete the listing for ${carName}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            deleteCar(carId);
+            Swal.fire(
+                'Deleted!',
+                'The listing has been deleted.',
+                'success'
+            );
+        }
+    });
   };
 
   return (

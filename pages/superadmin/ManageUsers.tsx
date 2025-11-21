@@ -1,22 +1,18 @@
+
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import { useCars } from '../../hooks/useCars';
 import { PencilIcon, TrashIcon, PlusCircleIcon, EyeIcon, LockClosedIcon, LockOpenIcon, SearchIcon } from '../../components/IconComponents';
 import type { User } from '../../types';
-import Modal from '../../components/Modal';
 import KYCViewerModal from '../../components/KYCViewerModal';
+import Swal from 'sweetalert2';
 
 const ManageUsers: React.FC = () => {
   const { users, deleteUser, updateUser } = useUserManagement();
   const { deleteCarsByDealer } = useCars();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    user: User | null;
-    action: 'approve' | 'reject' | 'delete' | 'block' | 'unblock' | null;
-  }>({ isOpen: false, user: null, action: null });
   const [kycViewerState, setKycViewerState] = useState<{ isOpen: boolean; user: User | null }>({ isOpen: false, user: null });
 
   const filteredUsers = useMemo(() => 
@@ -24,46 +20,50 @@ const ManageUsers: React.FC = () => {
       `${user.fname} ${user.lname} ${user.email}`.toLowerCase().includes(searchTerm.toLowerCase())
     ), [users, searchTerm]);
 
-  const openModal = (user: User, action: 'approve' | 'reject' | 'delete' | 'block' | 'unblock') => {
-    setModalState({ isOpen: true, user, action });
-  };
+  const handleAction = (user: User, action: 'approve' | 'reject' | 'delete' | 'block' | 'unblock') => {
+    const actionConfig: Record<string, { title: string; text: string; confirmColor: string }> = {
+        approve: { title: 'Approve Verification?', text: `Grant full access to ${user.fname} ${user.lname}?`, confirmColor: '#2563EB' },
+        reject: { title: 'Reject Verification?', text: `Reject verification for ${user.fname} ${user.lname}?`, confirmColor: '#DC2626' },
+        delete: { title: 'Delete User?', text: `Permanently delete ${user.fname} ${user.lname}? This cannot be undone.`, confirmColor: '#DC2626' },
+        block: { title: 'Block User?', text: `Block access for ${user.fname} ${user.lname}?`, confirmColor: '#DC2626' },
+        unblock: { title: 'Unblock User?', text: `Restore access for ${user.fname} ${user.lname}?`, confirmColor: '#2563EB' },
+    };
 
-  const closeModal = () => {
-    setModalState({ isOpen: false, user: null, action: null });
-  };
+    const config = actionConfig[action];
 
-  const handleConfirmAction = () => {
-    if (!modalState.user || !modalState.action) return;
-
-    switch (modalState.action) {
-      case 'approve':
-        updateUser(modalState.user.uid, { verificationStatus: 'Verified' });
-        break;
-      case 'reject':
-        updateUser(modalState.user.uid, { verificationStatus: 'Rejected' });
-        break;
-      case 'delete':
-        if (modalState.user.role === 'dealer') {
-          deleteCarsByDealer(modalState.user.uid);
+    Swal.fire({
+        title: config.title,
+        text: config.text,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: config.confirmColor,
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Yes, confirm'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            switch (action) {
+                case 'approve':
+                    updateUser(user.uid, { verificationStatus: 'Verified' });
+                    break;
+                case 'reject':
+                    updateUser(user.uid, { verificationStatus: 'Rejected' });
+                    break;
+                case 'delete':
+                    if (user.role === 'dealer') {
+                        deleteCarsByDealer(user.uid);
+                    }
+                    deleteUser(user.uid);
+                    break;
+                case 'block':
+                    updateUser(user.uid, { status: 'Blocked' });
+                    break;
+                case 'unblock':
+                    updateUser(user.uid, { status: 'Active' });
+                    break;
+            }
+            Swal.fire('Success!', 'Action completed successfully.', 'success');
         }
-        deleteUser(modalState.user.uid);
-        break;
-      case 'block':
-        updateUser(modalState.user.uid, { status: 'Blocked' });
-        break;
-      case 'unblock':
-        updateUser(modalState.user.uid, { status: 'Active' });
-        break;
-    }
-    closeModal();
-  };
-
-  const modalContent: Record<string, { title: string; message: (user: User) => string; confirmClass: string }> = {
-    approve: { title: 'Approve Verification', message: user => `Are you sure you want to approve ${user.fname} ${user.lname}? They will be granted full access.`, confirmClass: 'bg-primary text-primary-foreground hover:bg-primary/90' },
-    reject: { title: 'Reject Verification', message: user => `Are you sure you want to reject ${user.fname} ${user.lname}? Their status will be set to 'Rejected'.`, confirmClass: 'bg-red-600 text-white hover:bg-red-700' },
-    delete: { title: 'Delete User', message: user => `Are you sure you want to delete ${user.fname} ${user.lname}? This action is irreversible.`, confirmClass: 'bg-red-600 text-white hover:bg-red-700' },
-    block: { title: 'Block User', message: user => `Are you sure you want to block ${user.fname} ${user.lname}? They will not be able to log in.`, confirmClass: 'bg-red-600 text-white hover:bg-red-700' },
-    unblock: { title: 'Unblock User', message: user => `Are you sure you want to unblock ${user.fname} ${user.lname}? They will regain access to their account.`, confirmClass: 'bg-primary text-primary-foreground hover:bg-primary/90' },
+    });
   };
   
   const VerificationStatusBadge: React.FC<{status: User['verificationStatus']}> = ({ status }) => {
@@ -142,8 +142,8 @@ const ManageUsers: React.FC = () => {
                       <div className="flex items-center gap-1 flex-wrap">
                         {user.verificationStatus === 'Pending' && (
                           <>
-                            <button onClick={() => openModal(user, 'approve')} className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-500 hover:bg-green-500/30">Approve</button>
-                            <button onClick={() => openModal(user, 'reject')} className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-500 hover:bg-red-500/30">Reject</button>
+                            <button onClick={() => handleAction(user, 'approve')} className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-500 hover:bg-green-500/30">Approve</button>
+                            <button onClick={() => handleAction(user, 'reject')} className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-500 hover:bg-red-500/30">Reject</button>
                           </>
                         )}
                         {user.kycDocument && (
@@ -155,15 +155,15 @@ const ManageUsers: React.FC = () => {
                           <PencilIcon className="w-4 h-4" />
                         </button>
                         {user.status === 'Active' ? (
-                             <button onClick={() => openModal(user, 'block')} className="p-2 text-muted-foreground hover:text-red-500" title="Block User">
+                             <button onClick={() => handleAction(user, 'block')} className="p-2 text-muted-foreground hover:text-red-500" title="Block User">
                                 <LockClosedIcon className="w-4 h-4" />
                              </button>
                           ) : (
-                             <button onClick={() => openModal(user, 'unblock')} className="p-2 text-muted-foreground hover:text-green-500" title="Unblock User">
+                             <button onClick={() => handleAction(user, 'unblock')} className="p-2 text-muted-foreground hover:text-green-500" title="Unblock User">
                                 <LockOpenIcon className="w-4 h-4" />
                              </button>
                           )}
-                        <button onClick={() => openModal(user, 'delete')} className="p-2 text-muted-foreground hover:text-red-500" title="Delete User">
+                        <button onClick={() => handleAction(user, 'delete')} className="p-2 text-muted-foreground hover:text-red-500" title="Delete User">
                           <TrashIcon className="w-4 h-4" />
                         </button>
                       </div>
@@ -181,27 +181,6 @@ const ManageUsers: React.FC = () => {
           </table>
         </div>
       </div>
-       {modalState.isOpen && modalState.user && modalState.action && (
-        <Modal
-          isOpen={modalState.isOpen}
-          onClose={closeModal}
-          title={modalContent[modalState.action].title}
-        >
-          <div>
-            <p className="text-muted-foreground mb-6">
-              {modalContent[modalState.action].message(modalState.user)}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button onClick={closeModal} className="bg-secondary text-secondary-foreground font-bold py-2 px-4 rounded-lg hover:bg-border">
-                Cancel
-              </button>
-              <button onClick={handleConfirmAction} className={`font-bold py-2 px-4 rounded-lg ${modalContent[modalState.action].confirmClass}`}>
-                Confirm
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
        {kycViewerState.isOpen && kycViewerState.user && (
           <KYCViewerModal 
             user={kycViewerState.user}

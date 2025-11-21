@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import CarForm from '../../components/CarForm';
 import { useCars } from '../../hooks/useCars';
 import type { Car } from '../../types';
+import Swal from 'sweetalert2';
 
 const EditCar: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +20,12 @@ const EditCar: React.FC = () => {
         navigate('/dealer/listings');
     } catch (error) {
         console.error("Failed to update car:", error);
-        alert("An error occurred while updating the vehicle.");
+        Swal.fire({
+            title: 'Error',
+            text: "An error occurred while updating the vehicle.",
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+        });
     }
   };
   
