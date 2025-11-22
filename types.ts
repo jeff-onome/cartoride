@@ -60,6 +60,11 @@ export interface User {
   favorites?: string[]; // Array of car IDs
   recentlyViewed?: string[];
   compareItems?: string[];
+  // Loyalty Program
+  loyaltyPoints?: number;
+  tier?: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  referralCode?: string;
+  referrals?: number;
 }
 
 export interface TestDrive {

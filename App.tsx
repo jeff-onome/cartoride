@@ -41,6 +41,7 @@ import SalesHistory from './pages/dealer/SalesHistory';
 import SalesAnalytics from './pages/superadmin/SalesAnalytics';
 import { useSiteContent } from './hooks/useSiteContent';
 import { hexToHSL, getContrastColorHSL } from './utils/colorUtils';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
@@ -100,6 +101,7 @@ const AppLayout: React.FC = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
             {/* User Routes */}
             <Route path="/profile" element={<UserProfile />} />

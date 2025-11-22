@@ -10,14 +10,14 @@ import type { Car, TestDrive, Purchase, User } from '../types';
 import { 
     CalendarIcon, CheckCircleIcon, ClockIcon, XCircleIcon, CompareIcon, HeartIcon,
     SettingsIcon, KeyIcon, ShieldCheckIcon, BellIcon, LogOutIcon, GoogleIcon, FacebookIcon, ReceiptIcon,
-    MenuIcon, XIcon, InformationCircleIcon, UploadIcon, MapPinIcon, SearchIcon, Spinner
+    MenuIcon, XIcon, InformationCircleIcon, UploadIcon, MapPinIcon, SearchIcon, Spinner, GiftIcon
 } from '../components/IconComponents';
 import { COUNTRIES_WITH_STATES } from '../data/locationData';
 import { supabase } from '../supabase';
 import Swal from 'sweetalert2';
 
 
-type Tab = 'garage' | 'compare' | 'drives' | 'purchases' | 'verification' | 'settings';
+type Tab = 'garage' | 'compare' | 'drives' | 'purchases' | 'verification' | 'settings' | 'loyalty';
 
 // Helper Components (moved outside UserProfile)
 
@@ -142,6 +142,120 @@ const CompareTable: React.FC<{ cars: Car[] }> = ({ cars }) => (
         </table>
     </div>
 );
+
+const LoyaltyContent: React.FC<{ user: User }> = ({ user }) => {
+    const points = user.loyaltyPoints || 0;
+    const tier = user.tier || 'Bronze';
+    const referrals = user.referrals || 0;
+    
+    const tierColors = {
+        Bronze: 'from-orange-400 to-orange-600',
+        Silver: 'from-gray-300 to-gray-500',
+        Gold: 'from-yellow-400 to-yellow-600',
+        Platinum: 'from-slate-300 to-slate-500 border-2 border-purple-500',
+    };
+
+    const nextTierThreshold = tier === 'Bronze' ? 500 : tier === 'Silver' ? 1500 : tier === 'Gold' ? 3000 : 10000;
+    const progress = Math.min((points / nextTierThreshold) * 100, 100);
+
+    const copyReferral = () => {
+        if (user.referralCode) {
+            navigator.clipboard.writeText(user.referralCode);
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Copied!',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+    };
+
+    return (
+        <div className="space-y-8">
+            {/* Status Card */}
+            <div className={`bg-gradient-to-r ${tierColors[tier]} rounded-xl p-8 text-white shadow-lg relative overflow-hidden`}>
+                <div className="absolute right-0 top-0 opacity-10 transform translate-x-1/3 -translate-y-1/3">
+                    <GiftIcon className="w-64 h-64" />
+                </div>
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-widest opacity-80">Current Tier</h3>
+                            <h2 className="text-4xl font-extrabold">{tier} Member</h2>
+                        </div>
+                        <div className="text-right">
+                            <h3 className="text-sm font-bold uppercase tracking-widest opacity-80">Total Points</h3>
+                            <h2 className="text-4xl font-extrabold">{points.toLocaleString()}</h2>
+                        </div>
+                    </div>
+
+                    {tier !== 'Platinum' && (
+                        <div>
+                            <div className="flex justify-between text-xs font-semibold mb-1 opacity-90">
+                                <span>Progress to Next Tier</span>
+                                <span>{points} / {nextTierThreshold}</span>
+                            </div>
+                            <div className="w-full bg-black/20 rounded-full h-2">
+                                <div className="bg-white h-2 rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Benefits */}
+                <div className="bg-secondary p-6 rounded-lg border border-border">
+                    <h3 className="text-xl font-bold text-foreground mb-4">Your Rewards</h3>
+                    <ul className="space-y-3">
+                        <li className="flex items-center gap-3">
+                            <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                            <span>Earn points on every service booking & purchase</span>
+                        </li>
+                        {tier !== 'Bronze' && (
+                             <li className="flex items-center gap-3">
+                                <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                <span>5% Discount on Service Bookings (Silver+)</span>
+                            </li>
+                        )}
+                         {(tier === 'Gold' || tier === 'Platinum') && (
+                             <li className="flex items-center gap-3">
+                                <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                <span>10% Discount on Service Bookings (Gold+)</span>
+                            </li>
+                        )}
+                         {tier === 'Platinum' && (
+                             <li className="flex items-center gap-3">
+                                <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                <span>Priority Support & Concierge Service</span>
+                            </li>
+                        )}
+                    </ul>
+                </div>
+
+                {/* Referral */}
+                <div className="bg-secondary p-6 rounded-lg border border-border">
+                    <h3 className="text-xl font-bold text-foreground mb-4">Refer & Earn</h3>
+                    <p className="text-muted-foreground mb-4">Share your code with friends. You get 500 points when they buy a car!</p>
+                    
+                    <div className="flex items-center gap-4 bg-background p-3 rounded-md border border-input mb-4">
+                        <code className="flex-grow font-mono font-bold text-lg text-center tracking-wider text-accent">
+                            {user.referralCode || 'Generating...'}
+                        </code>
+                        <button onClick={copyReferral} className="bg-primary text-primary-foreground px-4 py-2 rounded text-sm font-bold hover:bg-primary/90">
+                            Copy
+                        </button>
+                    </div>
+                     <div className="text-center">
+                         <p className="text-sm font-semibold text-muted-foreground">Total Referrals: <span className="text-foreground">{referrals}</span></p>
+                     </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const GarageContent: React.FC<{favoriteCars: Car[], recentlyViewedCars: Car[]}> = ({ favoriteCars, recentlyViewedCars }) => (
     <div>
@@ -509,6 +623,7 @@ const UserProfile: React.FC = () => {
         { id: 'compare', label: 'Compare', icon: <CompareIcon className="w-5 h-5"/> },
         { id: 'drives', label: 'Test Drives', icon: <CalendarIcon className="w-5 h-5"/> },
         { id: 'purchases', label: 'Purchases', icon: <ReceiptIcon className="w-5 h-5"/> },
+        { id: 'loyalty', label: 'Loyalty Program', icon: <GiftIcon className="w-5 h-5"/> },
         { id: 'verification', label: 'Verification', icon: <ShieldCheckIcon className="w-5 h-5"/> },
         { id: 'settings', label: 'Settings', icon: <SettingsIcon className="w-5 h-5"/> },
     ];
@@ -559,6 +674,7 @@ const UserProfile: React.FC = () => {
                         {activeTab === 'compare' && <CompareContent compareCars={compareCars} onClear={clearCompare} />}
                         {activeTab === 'drives' && <DrivesContent testDrives={testDrives} cars={cars} onCancel={cancelTestDrive} onReschedule={rescheduleTestDrive}/>}
                         {activeTab === 'purchases' && <PurchasesContent purchases={purchases} cars={cars} />}
+                        {activeTab === 'loyalty' && <LoyaltyContent user={user} />}
                         {activeTab === 'verification' && <VerificationContent user={user} />}
                         {activeTab === 'settings' && <SettingsContent user={user} />}
                     </main>

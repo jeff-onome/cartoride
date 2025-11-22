@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSiteContent } from '../../hooks/useSiteContent';
 import { useCars } from '../../hooks/useCars';
-import type { SiteContent, PaymentMethod } from '../../types';
+import type { SiteContent, PaymentMethod, FaqItem } from '../../types';
 import { UploadIcon, Spinner, ReceiptIcon } from '../../components/IconComponents';
 import { supabase } from '../../supabase';
 import Swal from 'sweetalert2';
@@ -46,7 +46,8 @@ const SiteContent: React.FC = () => {
                     { id: 'card', label: 'Credit/Debit Card', enabled: true },
                     { id: 'pod', label: 'Pay on Delivery', enabled: true },
                     { id: 'bank_transfer', label: 'Bank Transfer', enabled: true }
-                ]
+                ],
+                faq: siteContent.faq || []
             }));
         }
     }, [siteContent]);
@@ -157,6 +158,30 @@ const SiteContent: React.FC = () => {
             return { ...prev, paymentSettings: newMethods };
         });
     };
+
+    // FAQ Handlers
+    const handleFaqChange = (index: number, field: keyof FaqItem, value: string) => {
+        setFormData(prev => {
+            const newFaq = [...prev.faq];
+            newFaq[index] = { ...newFaq[index], [field]: value };
+            return { ...prev, faq: newFaq };
+        });
+    };
+
+    const handleAddFaq = () => {
+        setFormData(prev => ({
+            ...prev,
+            faq: [...prev.faq, { question: '', answer: '' }]
+        }));
+    };
+
+    const handleDeleteFaq = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            faq: prev.faq.filter((_, i) => i !== index)
+        }));
+    };
+
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -453,6 +478,46 @@ const SiteContent: React.FC = () => {
                     </div>
                 </Section>
 
+                {/* FAQ Management Section */}
+                <Section title="Frequently Asked Questions">
+                    <div className="space-y-4">
+                        {formData.faq && formData.faq.map((item, index) => (
+                            <div key={index} className="flex flex-col gap-2 border-b border-border pb-4 last:border-0">
+                                <div className="flex justify-between items-start">
+                                    <h4 className="font-semibold text-sm text-muted-foreground">Question {index + 1}</h4>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleDeleteFaq(index)}
+                                        className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    value={item.question} 
+                                    onChange={(e) => handleFaqChange(index, 'question', e.target.value)}
+                                    placeholder="Question"
+                                    className={inputClass}
+                                />
+                                <textarea 
+                                    value={item.answer} 
+                                    onChange={(e) => handleFaqChange(index, 'answer', e.target.value)}
+                                    placeholder="Answer"
+                                    className={inputClass}
+                                    rows={2}
+                                />
+                            </div>
+                        ))}
+                        <button 
+                            type="button" 
+                            onClick={handleAddFaq}
+                            className="w-full bg-accent/10 text-accent font-bold py-2 rounded-lg border border-accent/20 hover:bg-accent/20 transition-colors"
+                        >
+                            + Add New Question
+                        </button>
+                    </div>
+                </Section>
 
                 <div className="mt-8">
                     <button 

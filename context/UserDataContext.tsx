@@ -67,6 +67,17 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
        );
        
+       // Generate referral code if missing
+       if (!user.referralCode) {
+           const code = (user.fname.substring(0, 3) + Math.floor(Math.random() * 10000)).toUpperCase();
+           db.ref('users/' + user.uid).update({ 
+               referralCode: code,
+               loyaltyPoints: user.loyaltyPoints || 0,
+               tier: user.tier || 'Bronze',
+               referrals: user.referrals || 0
+           });
+       }
+       
        return () => {
            drivesQuery.off('value', drivesUnsubscribe);
            purchasesQuery.off('value', purchasesUnsubscribe);
@@ -105,6 +116,23 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
         if (!user) return;
         const newPurchaseRef = db.ref('purchases').push();
         await newPurchaseRef.set({ ...purchaseData, userId: user.uid });
+        
+        // Calculate Loyalty Points
+        // Logic: 10 points for every 100,000 currency units spent
+        const pointsEarned = Math.floor(purchaseData.pricePaid / 100000) * 10;
+        const currentPoints = user.loyaltyPoints || 0;
+        const newTotalPoints = currentPoints + pointsEarned;
+        
+        // Determine Tier
+        let newTier = user.tier || 'Bronze';
+        if (newTotalPoints >= 3000) newTier = 'Platinum';
+        else if (newTotalPoints >= 1500) newTier = 'Gold';
+        else if (newTotalPoints >= 500) newTier = 'Silver';
+
+        await db.ref('users/' + user.uid).update({
+            loyaltyPoints: newTotalPoints,
+            tier: newTier
+        });
     };
 
     const value = {

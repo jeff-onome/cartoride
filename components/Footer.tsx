@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CarIcon, FacebookIcon, TwitterIcon, InstagramIcon } from './IconComponents';
@@ -34,7 +35,7 @@ const Footer: React.FC = () => {
             <ul className="mt-4 space-y-4">
               <li><Link to="/faq" className="text-base text-muted-foreground hover:text-foreground">FAQ</Link></li>
               <li><a href="#" className="text-base text-muted-foreground hover:text-foreground">Financing</a></li>
-              <li><a href="#" className="text-base text-muted-foreground hover:text-foreground">Privacy Policy</a></li>
+              <li><Link to="/privacy-policy" className="text-base text-muted-foreground hover:text-foreground">Privacy Policy</Link></li>
             </ul>
           </div>
            <div className="col-span-2 md:col-span-1">
