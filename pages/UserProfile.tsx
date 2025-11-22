@@ -238,7 +238,7 @@ const LoyaltyContent: React.FC<{ user: User }> = ({ user }) => {
                 {/* Referral */}
                 <div className="bg-secondary p-6 rounded-lg border border-border">
                     <h3 className="text-xl font-bold text-foreground mb-4">Refer & Earn</h3>
-                    <p className="text-muted-foreground mb-4">Share your code with friends. You get 500 points when they buy a car!</p>
+                    <p className="text-muted-foreground mb-4">Share your code. Friends get 5% off their purchase, and you get 500 loyalty points!</p>
                     
                     <div className="flex items-center gap-4 bg-background p-3 rounded-md border border-input mb-4">
                         <code className="flex-grow font-mono font-bold text-lg text-center tracking-wider text-accent">

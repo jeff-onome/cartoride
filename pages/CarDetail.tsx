@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCars } from '../hooks/useCars';
-import { FuelIcon, GaugeIcon, TransmissionIcon, ArrowLeftIcon, HeartIcon, ShieldCheckIcon, Spinner, ReceiptIcon, LockClosedIcon, CheckCircleIcon } from '../components/IconComponents';
+import { FuelIcon, GaugeIcon, TransmissionIcon, ArrowLeftIcon, HeartIcon, ShieldCheckIcon, Spinner, ReceiptIcon, LockClosedIcon, CheckCircleIcon, GiftIcon } from '../components/IconComponents';
 import { useUserData } from '../hooks/useUserData';
 import { useAuth } from '../hooks/useAuth';
 import { useSiteContent } from '../hooks/useSiteContent';
@@ -26,6 +26,10 @@ const CarDetail: React.FC = () => {
   const [paymentStep, setPaymentStep] = useState<'select' | 'details' | 'confirm'>('select');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvc: '', name: '' });
+
+  // Referral / Discount
+  const [referralCode, setReferralCode] = useState('');
+  const [isDiscountApplied, setIsDiscountApplied] = useState(false);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -65,6 +69,8 @@ const CarDetail: React.FC = () => {
   const canVerify = user && (user.role === 'dealer' || user.role === 'superadmin');
   const isRent = car?.listingType === 'Rent';
 
+  const finalPrice = car ? (isDiscountApplied ? Math.floor(car.price * 0.95) : car.price) : 0;
+
   const fetchDealerInfo = async (dealerId: string) => {
       try {
           const snapshot = await db.ref(`users/${dealerId}`).once('value');
@@ -76,6 +82,31 @@ const CarDetail: React.FC = () => {
           console.error("Error fetching dealer info", e);
       }
       return { name: 'AutoSphere Dealer', email: 'dealer@autosphere.com' }; // Fallback
+  };
+
+  const handleApplyReferral = () => {
+      if (referralCode.trim().length >= 3) {
+          setIsDiscountApplied(true);
+          Swal.fire({
+              icon: 'success',
+              title: 'Discount Applied!',
+              text: 'A 5% discount has been applied to the price.',
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 2000
+          });
+      } else {
+           Swal.fire({
+              icon: 'error',
+              title: 'Invalid Code',
+              text: 'Please enter a valid referral code.',
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 2000
+          });
+      }
   };
 
   const handleScheduleClick = async () => {
@@ -178,19 +209,19 @@ const CarDetail: React.FC = () => {
           await addPurchase({
               carId: car.id,
               purchaseDate: new Date().toISOString(),
-              pricePaid: car.price,
+              pricePaid: finalPrice,
               dealership: dealer.name,
               paymentMethod: paymentLabel
-          });
+          }, isDiscountApplied ? referralCode : undefined);
 
           // 3. Send Email to User
           const userSubject = "Purchase Confirmation - AutoSphere";
-          const userBody = `Dear ${user.fname},\n\nCongratulations on your purchase of the ${car.year} ${car.make} ${car.model}!\n\nPrice: ₦${car.price.toLocaleString()}\nPayment Method: ${paymentLabel}\nTransaction ID: ${Date.now()}\n\nThe dealer (${dealer.name}) will contact you shortly to finalize the paperwork and delivery.\n\nThank you for choosing AutoSphere!`;
+          const userBody = `Dear ${user.fname},\n\nCongratulations on your purchase of the ${car.year} ${car.make} ${car.model}!\n\nPrice: ₦${finalPrice.toLocaleString()}\nPayment Method: ${paymentLabel}\nTransaction ID: ${Date.now()}\n\nThe dealer (${dealer.name}) will contact you shortly to finalize the paperwork and delivery.\n\nThank you for choosing AutoSphere!`;
           await sendEmail(user.email, userSubject, userBody);
 
           // 4. Send Email to Dealer
           const dealerSubject = "Vehicle Sold! - New Purchase Order";
-          const dealerBody = `Hello ${dealer.name},\n\nGreat news! Your listing ${car.year} ${car.make} ${car.model} has been sold.\n\nBuyer: ${user.fname} ${user.lname} (${user.email})\nPrice: ₦${car.price.toLocaleString()}\nPayment Method: ${paymentLabel}\n\nPlease contact the buyer to arrange delivery.`;
+          const dealerBody = `Hello ${dealer.name},\n\nGreat news! Your listing ${car.year} ${car.make} ${car.model} has been sold.\n\nBuyer: ${user.fname} ${user.lname} (${user.email})\nPrice: ₦${finalPrice.toLocaleString()}\nPayment Method: ${paymentLabel}\n\nPlease contact the buyer to arrange delivery.`;
           await sendEmail(dealer.email, dealerSubject, dealerBody);
 
           setIsPurchaseModalOpen(false);
@@ -441,7 +472,36 @@ const CarDetail: React.FC = () => {
 
                     <div className="bg-secondary p-4 rounded-lg border border-border mb-4">
                          <p className="text-sm font-semibold text-foreground mb-1">Payment Method: {availablePaymentMethods.find(m => m.id === selectedPaymentMethod)?.label}</p>
-                         <p className="text-2xl font-bold text-primary">₦{car.price.toLocaleString()}</p>
+                         {isDiscountApplied ? (
+                             <div>
+                                 <p className="text-lg line-through text-muted-foreground">₦{car.price.toLocaleString()}</p>
+                                 <p className="text-2xl font-bold text-green-600">₦{finalPrice.toLocaleString()} <span className="text-sm text-foreground font-normal">(5% Discount Applied)</span></p>
+                             </div>
+                         ) : (
+                            <p className="text-2xl font-bold text-primary">₦{car.price.toLocaleString()}</p>
+                         )}
+                    </div>
+                    
+                    {/* Referral Section */}
+                    <div className="flex gap-2 items-center bg-secondary/50 p-3 rounded-lg border border-border">
+                        <div className="bg-accent/10 p-2 rounded-full text-accent">
+                            <GiftIcon className="w-5 h-5" />
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Referral Code" 
+                            value={referralCode}
+                            onChange={(e) => setReferralCode(e.target.value)}
+                            disabled={isDiscountApplied}
+                            className="flex-grow bg-background border border-input rounded-md p-2 text-sm"
+                        />
+                        <button 
+                            onClick={handleApplyReferral}
+                            disabled={isDiscountApplied || !referralCode}
+                            className="bg-accent text-accent-foreground px-3 py-2 rounded-md text-sm font-bold disabled:opacity-50"
+                        >
+                            {isDiscountApplied ? 'Applied' : 'Apply'}
+                        </button>
                     </div>
 
                     {selectedPaymentMethod === 'card' ? (
@@ -492,7 +552,7 @@ const CarDetail: React.FC = () => {
                             className="flex-1 bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                         >
                             {processing && <Spinner className="w-5 h-5" />}
-                            {processing ? 'Processing...' : `Pay ₦${car.price.toLocaleString()}`}
+                            {processing ? 'Processing...' : `Pay ₦${finalPrice.toLocaleString()}`}
                         </button>
                     </div>
                 </div>

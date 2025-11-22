@@ -13,7 +13,7 @@ interface UserDataContextType {
   cancelTestDrive: (testDriveId: string) => Promise<void>;
   scheduleTestDrive: (driveData: Omit<TestDrive, 'id' | 'userId'>) => Promise<void>;
   rescheduleTestDrive: (testDriveId: string, newBookingDate: string) => Promise<void>;
-  addPurchase: (purchaseData: Omit<Purchase, 'id' | 'userId'>) => Promise<void>;
+  addPurchase: (purchaseData: Omit<Purchase, 'id' | 'userId'>, referralCode?: string) => Promise<void>;
 }
 
 export const UserDataContext = createContext<UserDataContextType | undefined>(undefined);
@@ -35,6 +35,13 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
         return items;
     }
     
+    const calculateTier = (points: number) => {
+        if (points >= 3000) return 'Platinum';
+        if (points >= 1500) return 'Gold';
+        if (points >= 500) return 'Silver';
+        return 'Bronze';
+    };
+
     useEffect(() => {
        if (!user) {
            setTestDrives([]);
@@ -67,9 +74,15 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
        );
        
-       // Generate referral code if missing
+       // Generate unique referral code if missing
        if (!user.referralCode) {
-           const code = (user.fname.substring(0, 3) + Math.floor(Math.random() * 10000)).toUpperCase();
+           // Logic: First 3 chars of Name + Random 4 digits + Last 3 chars of UID for uniqueness
+           const fname = user.fname || 'USR';
+           const cleanName = fname.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+           const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 digit number
+           const uidSuffix = user.uid.slice(-3).toUpperCase();
+           const code = `${cleanName || 'USR'}${randomNum}${uidSuffix}`;
+
            db.ref('users/' + user.uid).update({ 
                referralCode: code,
                loyaltyPoints: user.loyaltyPoints || 0,
@@ -112,27 +125,58 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
         await driveRef.update({ bookingDate: newBookingDate, status: 'Approved' });
     };
 
-    const addPurchase = async (purchaseData: Omit<Purchase, 'id' | 'userId'>) => {
+    const addPurchase = async (purchaseData: Omit<Purchase, 'id' | 'userId'>, referralCode?: string) => {
         if (!user) return;
         const newPurchaseRef = db.ref('purchases').push();
         await newPurchaseRef.set({ ...purchaseData, userId: user.uid });
         
-        // Calculate Loyalty Points
+        // Calculate Loyalty Points for Buyer
         // Logic: 10 points for every 100,000 currency units spent
         const pointsEarned = Math.floor(purchaseData.pricePaid / 100000) * 10;
         const currentPoints = user.loyaltyPoints || 0;
         const newTotalPoints = currentPoints + pointsEarned;
         
-        // Determine Tier
-        let newTier = user.tier || 'Bronze';
-        if (newTotalPoints >= 3000) newTier = 'Platinum';
-        else if (newTotalPoints >= 1500) newTier = 'Gold';
-        else if (newTotalPoints >= 500) newTier = 'Silver';
+        // Determine Tier for Buyer
+        const newTier = calculateTier(newTotalPoints);
 
         await db.ref('users/' + user.uid).update({
             loyaltyPoints: newTotalPoints,
             tier: newTier
         });
+
+        // Handle Referral Logic
+        if (referralCode) {
+            try {
+                const usersRef = db.ref('users');
+                const snapshot = await usersRef.orderByChild('referralCode').equalTo(referralCode).once('value');
+                
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        const referrerId = childSnapshot.key;
+                        
+                        // Prevent self-referral
+                        if (referrerId && referrerId !== user.uid) {
+                            const referrerData = childSnapshot.val();
+                            const referrerCurrentPoints = referrerData.loyaltyPoints || 0;
+                            const referrerCurrentReferrals = referrerData.referrals || 0;
+                            
+                            // Award 500 points to the referrer
+                            const newReferrerPoints = referrerCurrentPoints + 500;
+                            const newReferrerTier = calculateTier(newReferrerPoints);
+                            const newReferrerCount = referrerCurrentReferrals + 1;
+
+                            db.ref('users/' + referrerId).update({
+                                loyaltyPoints: newReferrerPoints,
+                                referrals: newReferrerCount,
+                                tier: newReferrerTier
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error processing referral reward:", error);
+            }
+        }
     };
 
     const value = {
