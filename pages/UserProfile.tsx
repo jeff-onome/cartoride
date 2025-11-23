@@ -5,21 +5,20 @@ import { useAuth } from '../hooks/useAuth';
 import { useUserData } from '../hooks/useUserData';
 import { useCars } from '../hooks/useCars';
 import CarCard from '../components/CarCard';
-import Modal from '../components/Modal';
 import type { Car, TestDrive, Purchase, User } from '../types';
 import { 
     CalendarIcon, CheckCircleIcon, ClockIcon, XCircleIcon, CompareIcon, HeartIcon,
-    SettingsIcon, KeyIcon, ShieldCheckIcon, BellIcon, LogOutIcon, GoogleIcon, FacebookIcon, ReceiptIcon,
-    MenuIcon, XIcon, InformationCircleIcon, UploadIcon, MapPinIcon, SearchIcon, Spinner, GiftIcon
+    SettingsIcon, KeyIcon, ShieldCheckIcon, LogOutIcon, ReceiptIcon,
+    MenuIcon, XIcon, InformationCircleIcon, MapPinIcon, GiftIcon, Spinner
 } from '../components/IconComponents';
 import { COUNTRIES_WITH_STATES } from '../data/locationData';
 import { supabase } from '../supabase';
 import Swal from 'sweetalert2';
-
+import { auth, db } from '../firebase';
 
 type Tab = 'garage' | 'compare' | 'drives' | 'purchases' | 'verification' | 'settings' | 'loyalty';
 
-// Helper Components (moved outside UserProfile)
+// Helper Components
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="mb-8 last:mb-0">
@@ -525,14 +524,14 @@ const AddressForm: React.FC<{user: User, onUpdate: () => void}> = ({ user, onUpd
     );
 };
 
-const AccountSettings: React.FC = () => (
+const AccountSettings: React.FC<{ onDelete: () => void }> = ({ onDelete }) => (
     <div className="space-y-4">
         <Link to="/profile/change-password" className="text-accent font-semibold flex items-center gap-2"><KeyIcon className="w-5 h-5"/>Change Password</Link>
         <p className="text-sm text-muted-foreground">For security, you will be asked for your current password.</p>
         <hr className="border-border"/>
         <h3 className="text-lg font-bold text-red-500 pt-2">Delete Account</h3>
         <p className="text-sm text-muted-foreground">Permanently delete your account and all associated data. This action cannot be undone.</p>
-        <button className="px-4 py-2 bg-red-600 text-white rounded-md font-semibold">Delete My Account</button>
+        <button onClick={onDelete} className="px-4 py-2 bg-red-600 text-white rounded-md font-semibold hover:bg-red-700 transition-colors">Delete My Account</button>
     </div>
 );
 
@@ -544,19 +543,19 @@ const NotificationSettings: React.FC = () => (
                 <h4 className="font-semibold">Promotional Emails</h4>
                 <p className="text-sm text-muted-foreground">Receive news, special offers, and promotions.</p>
             </div>
-            <input type="checkbox" className="toggle-checkbox" defaultChecked />
+            <input type="checkbox" className="h-5 w-5 rounded border-border text-accent focus:ring-ring" defaultChecked />
         </div>
         <div className="flex items-center justify-between">
             <div>
                 <h4 className="font-semibold">New Listing Alerts</h4>
                 <p className="text-sm text-muted-foreground">Get notified when new cars match your interests.</p>
             </div>
-            <input type="checkbox" className="toggle-checkbox" />
+            <input type="checkbox" className="h-5 w-5 rounded border-border text-accent focus:ring-ring" />
         </div>
     </div>
 );
 
-const SettingsContent: React.FC<{ user: User }> = ({ user }) => {
+const SettingsContent: React.FC<{ user: User, onDeleteAccount: () => void }> = ({ user, onDeleteAccount }) => {
     const [editingSection, setEditingSection] = useState<'personal' | 'address' | null>(null);
 
     return (
@@ -584,7 +583,7 @@ const SettingsContent: React.FC<{ user: User }> = ({ user }) => {
                     </div>
                 )}
             </Section>
-            <Section title="Account Settings"><AccountSettings /></Section>
+            <Section title="Account Settings"><AccountSettings onDelete={onDeleteAccount} /></Section>
             <Section title="Notification Settings"><NotificationSettings /></Section>
         </div>
     );
@@ -596,7 +595,7 @@ const UserProfile: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout, loading: authLoading } = useAuth();
     const { testDrives, purchases, loading: userDataLoading, cancelTestDrive, rescheduleTestDrive, clearCompare } = useUserData();
-    const { cars, loading: carsLoading } = useCars();
+    const { cars, loading: carsLoading, deleteCarsByDealer } = useCars();
 
     const loading = authLoading || userDataLoading || carsLoading;
 
@@ -618,6 +617,63 @@ const UserProfile: React.FC = () => {
         return <div className="min-h-screen flex items-center justify-center"><Spinner className="h-16 w-16" /></div>;
     }
     
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+
+        const result = await Swal.fire({
+            title: 'Delete Account?',
+            text: "Are you sure you want to permanently delete your account? This action cannot be undone and all your data (including listings if you are a dealer) will be lost.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#DC2626', // Red
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Yes, Delete My Account'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // 1. Delete Dealer Cars if applicable
+                if (user.role === 'dealer') {
+                    await deleteCarsByDealer(user.uid);
+                }
+
+                // 2. Delete User Data
+                await db.ref('users/' + user.uid).remove();
+
+                // 3. Attempt Auth Deletion (Best effort)
+                const currentUser = auth.currentUser;
+                if (currentUser) {
+                    try {
+                        await currentUser.delete();
+                    } catch (authError) {
+                        console.warn("Could not delete auth user (requires recent login), logging out instead:", authError);
+                    }
+                }
+
+                // 4. Logout and Redirect
+                await logout();
+                navigate('/');
+
+                Swal.fire({
+                    title: 'Account Deleted',
+                    text: 'Your account has been successfully deleted.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+            } catch (error: any) {
+                console.error("Error deleting account:", error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to delete account. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#2563EB'
+                });
+            }
+        }
+    };
+
     const tabs = [
         { id: 'garage', label: 'My Garage', icon: <HeartIcon className="w-5 h-5"/> },
         { id: 'compare', label: 'Compare', icon: <CompareIcon className="w-5 h-5"/> },
@@ -676,7 +732,7 @@ const UserProfile: React.FC = () => {
                         {activeTab === 'purchases' && <PurchasesContent purchases={purchases} cars={cars} />}
                         {activeTab === 'loyalty' && <LoyaltyContent user={user} />}
                         {activeTab === 'verification' && <VerificationContent user={user} />}
-                        {activeTab === 'settings' && <SettingsContent user={user} />}
+                        {activeTab === 'settings' && <SettingsContent user={user} onDeleteAccount={handleDeleteAccount} />}
                     </main>
                 </div>
             </div>

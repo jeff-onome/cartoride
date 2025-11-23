@@ -28,13 +28,13 @@ const allConditionFilters = ['New', 'Used'];
 const SiteContent: React.FC = () => {
     const { siteContent, updateSiteContent } = useSiteContent();
     const { cars } = useCars();
-    const [formData, setFormData] = useState<SiteContent>(siteContent);
+    const [formData, setFormData] = useState<SiteContent>(siteContent || {} as SiteContent);
     const [isUploadingHero, setIsUploadingHero] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (siteContent) {
-            setFormData(prev => ({
+            setFormData({
                 ...siteContent,
                 // Ensure defaults if missing
                 themeSettings: siteContent.themeSettings || {
@@ -48,7 +48,7 @@ const SiteContent: React.FC = () => {
                     { id: 'bank_transfer', label: 'Bank Transfer', enabled: true }
                 ],
                 faq: siteContent.faq || []
-            }));
+            });
         }
     }, [siteContent]);
 

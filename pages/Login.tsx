@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { ArrowLeftIcon, InformationCircleIcon } from '../components/IconComponents';
-import { db } from '../firebase';
+import { ArrowLeftIcon } from '../components/IconComponents';
 import Swal from 'sweetalert2';
 
 const Login: React.FC = () => {

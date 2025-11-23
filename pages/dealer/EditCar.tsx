@@ -13,7 +13,7 @@ const EditCar: React.FC = () => {
   
   const carToEdit = cars.find(c => c.id === id);
 
-  const handleUpdateCar = async (carData: Omit<Car, 'id' | 'dealerId'>) => {
+  const handleUpdateCar = async (carData: Omit<Car, 'id' | 'dealerId' | 'verificationStatus'>) => {
     if (!carToEdit) return;
     try {
         await updateCar(carToEdit.id, carData);

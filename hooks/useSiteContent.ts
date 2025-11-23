@@ -27,6 +27,7 @@ export const useSiteContent = () => {
                 sortOptions: [],
                 conditionFilters: [],
             },
+            paymentSettings: [],
             faq: [],
             testimonials: [],
         } as SiteContent,
